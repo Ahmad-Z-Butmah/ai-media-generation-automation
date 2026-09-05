@@ -47,7 +47,8 @@ The workflow follows this process:
 
 ## Workflow Architecture
 
-<img width="1877" height="927" alt="n8n AI Media Generation Workflow" src="https://github.com/user-attachments/assets/827ce53e-100d-4278-808f-920ebc5297d5" />
+<img width="1862" height="914" alt="image" src="https://github.com/user-attachments/assets/c36c5a23-6f3a-4f74-9354-59b4f38378a6" />
+
 ## Setup
 
 1. Import the workflow JSON file into n8n.
