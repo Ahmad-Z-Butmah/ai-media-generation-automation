@@ -1,0 +1,876 @@
+{
+  "name": "01 - التوليد اليومي للمحتوى التسويقي",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "2031bf97-5fd3-48b4-a9b2-768f5ef774e1",
+      "name": "كل يوم الساعة 9 صباحاً",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -80,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "property_profile",
+          "mode": "name"
+        },
+        "returnAll": true
+      },
+      "id": "6baf2c2a-f349-4c87-a19f-a0401fc61516",
+      "name": "قراءة ملف هوية العقار",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "post_log"
+        },
+        "limit": 10,
+        "orderBy": true
+      },
+      "id": "fc345aa1-135d-40eb-b232-b07518066571",
+      "name": "قراءة آخر 10 منشورات (لتجنب التكرار)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        192
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=بيانات العقار (ملف الهوية - المصدر الوحيد المسموح):\n{{ JSON.stringify($(\"قراءة ملف هوية العقار\").all().map(i => i.json)) }}\n\nآخر 10 منشورات سابقة (لتجنب تكرار نفس الفكرة/المرحلة):\n{{ JSON.stringify($(\"قراءة آخر 10 منشورات (لتجنب التكرار)\").all().map(i => i.json)) }}\n\nبناءً على هذه البيانات فقط، ابتكر فكرة محتوى ليوم اليوم والتزم بصيغة الإخراج.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "أنت مخطط محتوى تسويقي لعقار قيد البناء. القاعدة الذهبية الصارمة: ممنوع منعاً باتاً اختراع أي تفصيل (شكل، أبعاد، عدد طوابق، ألوان، موقع) غير موجود حرفياً في ملف هوية العقار المرفق. إذا كانت current_floor تساوي رقماً معيناً، يُمنع وصف أو الإشارة إلى أي طابق أعلى منه كأنه مكتمل. اختر content_type بالتناوب الذكي بين: \"image\" (صورة تسويقية ثابتة للواجهة/التفاصيل المعمارية تُولَّد عبر Imagen)، \"real_footage_video\" (تحريك صورة حقيقية للموقع - حفريات أو طابق قيد الإنشاء - عبر Veo Image-to-Video، يجب أن يصف video_prompt حركة كاميرا/إضاءة فقط بدون تغيير هيكل المبنى)، \"avatar_video\" (شخصية ثابتة تتكلم وتروج، عبر HeyGen، السكربت avatar_script يجب أن يستخدم فقط حقائق من marketing_details). لا تكرر نفس stage أو content_type المستخدم بآخر يومين من السجل السابق. أعد فقط JSON مطابق للمخطط المطلوب بدون أي شرح إضافي. ولّد content_id كنص عشوائي قصير."
+        }
+      },
+      "id": "8c2fe65c-5262-40a0-9357-93e0259ddbd9",
+      "name": "وكيل تخطيط المحتوى اليومي",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {
+          "temperature": 0.6
+        }
+      },
+      "id": "d0cb0633-81d2-4ae0-b66a-d7d4e1ca7c7a",
+      "name": "Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        416
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "g9NOK8BRG1ghd1CG",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"content_id\":\"string\",\"content_type\":\"image | real_footage_video | avatar_video\",\"stage\":\"string - المرحلة الانشائية الحالية فقط\",\"image_prompt\":\"string\",\"video_prompt\":\"string\",\"avatar_script\":\"string\",\"caption_ar\":\"string\",\"hashtags\":[\"#string\"]}"
+      },
+      "id": "46d72df6-fa23-4ca2-a744-1933b8ad26e6",
+      "name": "تنسيق مخرجات الخطة (JSON)",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        816,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "content_id",
+              "value": "={{ $json.output.content_id || $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "content_type",
+              "value": "={{ $json.output.content_type }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "stage",
+              "value": "={{ $json.output.stage }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "image_prompt",
+              "value": "={{ $json.output.image_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "video_prompt",
+              "value": "={{ $json.output.video_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "avatar_script",
+              "value": "={{ $json.output.avatar_script }}",
+              "type": "string"
+            },
+            {
+              "id": "a7",
+              "name": "caption_ar",
+              "value": "={{ $json.output.caption_ar }}",
+              "type": "string"
+            },
+            {
+              "id": "a8",
+              "name": "hashtags",
+              "value": "={{ ($json.output.hashtags || []).join(\" \") }}",
+              "type": "string"
+            },
+            {
+              "id": "a9",
+              "name": "reference_image_url",
+              "value": "={{ $(\"قراءة ملف هوية العقار\").first().json.reference_image_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4f305f1e-3da1-4751-99ff-e0b96003cf79",
+      "name": "تجهيز بيانات الخطة",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1008,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.content_type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "image",
+                    "id": "afcecf64-3636-4ff3-9f23-f10e25ecad95"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.content_type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "real_footage_video",
+                    "id": "c1cc8200-809e-4835-abfe-6b85cd06c183"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.content_type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "avatar_video",
+                    "id": "3c6653b2-05e8-4fb2-b3ed-cf7ec4dbacef"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "غير معروف"
+        }
+      },
+      "id": "75bf7baa-02d4-483c-8e64-980afdeb051c",
+      "name": "توجيه حسب نوع المحتوى",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1200,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://image.pollinations.ai/prompt/{{encodeURIComponent($json.image_prompt)}}?width=1024&height=1024&model=flux&nologo=true",
+        "options": {}
+      },
+      "id": "dd01302d-88f7-46d0-ad1f-438f3e403bdc",
+      "name": "توليد صورة (Imagen API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1472,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "7121436482",
+        "binaryData": true,
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ موافق وانشر 6 مساءً",
+                    "additionalFields": {
+                      "callback_data": "={{ \"approve:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  },
+                  {
+                    "text": "✏️ تعديل",
+                    "additionalFields": {
+                      "callback_data": "={{ \"edit:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔄 فكرة جديدة",
+                    "additionalFields": {
+                      "callback_data": "={{ \"newidea:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  },
+                  {
+                    "text": "❌ إلغاء",
+                    "additionalFields": {
+                      "callback_data": "={{ \"cancel:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ $(\"تجهيز بيانات الخطة\").first().json.caption_ar + \"\\n\\n\" + $(\"تجهيز بيانات الخطة\").first().json.hashtags }}"
+        }
+      },
+      "id": "6a275f32-0252-447c-896e-150314d6b117",
+      "name": "إرسال الصورة لتيليجرام مع أزرار الموافقة",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2368,
+        0
+      ],
+      "webhookId": "912dcffb-8c6b-4661-9ec0-bca0b466cbf6",
+      "credentials": {
+        "telegramApi": {
+          "id": "aBlDx9kMJ6ys8h0t",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "post_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "content_id": "={{ $(\"تجهيز بيانات الخطة\").first().json.content_id }}",
+            "content_type": "={{ $(\"تجهيز بيانات الخطة\").first().json.content_type }}",
+            "stage": "={{ $(\"تجهيز بيانات الخطة\").first().json.stage }}",
+            "status": "pending_review",
+            "telegram_message_id": "={{ $json.result.message_id }}"
+          },
+          "schema": [
+            {
+              "id": "content_id",
+              "displayName": "content_id",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "content_type",
+              "displayName": "content_type",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "stage",
+              "displayName": "stage",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "telegram_message_id",
+              "displayName": "telegram_message_id",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d94e9e2b-bfb7-4bc2-a306-d1ced7322a87",
+      "name": "تسجيل الحالة (بانتظار المراجعة)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2592,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<__PLACEHOLDER_VALUE__رابط Veo API الرسمي لبدء التوليد (predictLongRunning)__>",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"instances\": [ { \"prompt\": $json.video_prompt, \"image\": { \"imageUri\": $json.reference_image_url } } ] } }}",
+        "options": {}
+      },
+      "id": "6b8f7060-ada1-410e-8a1a-a34ce10e25a7",
+      "name": "بدء توليد فيديو (Veo Image-to-Video)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1504,
+        160
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "Ox8mZbVD1WkdDUhR",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 90
+      },
+      "id": "c81a6a09-cb44-4736-bdbf-f65b556275c0",
+      "name": "انتظار اكتمال توليد الفيديو (Veo)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1744,
+        176
+      ],
+      "webhookId": "361bfd53-3506-45be-a516-2e7500da674c"
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://generativelanguage.googleapis.com/v1beta/\" + $(\"بدء توليد فيديو (Veo Image-to-Video)\").first().json.name }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "options": {}
+      },
+      "id": "4ab1d07d-79a4-46a2-be96-456e90afd6c8",
+      "name": "التحقق من حالة الفيديو والحصول على الرابط (Veo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1936,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.response.generateVideoResponse.generatedSamples[0].video.uri }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "9a264cb9-01be-4e8b-aba0-e2f2062946cd",
+      "name": "تحميل ملف الفيديو (Veo)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2144,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "<__PLACEHOLDER_VALUE__Telegram Chat ID تبعك__>",
+        "binaryData": true,
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ موافق وانشر 6 مساءً",
+                    "additionalFields": {
+                      "callback_data": "={{ \"approve:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  },
+                  {
+                    "text": "✏️ تعديل",
+                    "additionalFields": {
+                      "callback_data": "={{ \"edit:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔄 فكرة جديدة",
+                    "additionalFields": {
+                      "callback_data": "={{ \"newidea:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  },
+                  {
+                    "text": "❌ إلغاء",
+                    "additionalFields": {
+                      "callback_data": "={{ \"cancel:\" + $(\"تجهيز بيانات الخطة\").first().json.content_id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "caption": "={{ $(\"تجهيز بيانات الخطة\").first().json.caption_ar + \"\\n\\n\" + $(\"تجهيز بيانات الخطة\").first().json.hashtags }}"
+        }
+      },
+      "id": "81b328aa-8672-4ac4-9b0c-b3e2c0b40d76",
+      "name": "إرسال الفيديو لتيليجرام مع أزرار الموافقة",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2368,
+        288
+      ],
+      "webhookId": "8101e1a1-26c6-4fd9-82e3-cfc416b1356e",
+      "credentials": {
+        "telegramApi": {
+          "id": "MtaeICXhGOrx7yUg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<__PLACEHOLDER_VALUE__رابط HeyGen API لبدء التوليد (v2/video/generate)__>",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"video_inputs\": [ { \"character\": { \"type\": \"avatar\", \"avatar_id\": \"YOUR_SAVED_AVATAR_ID\" }, \"voice\": { \"type\": \"text\", \"input_text\": $json.avatar_script } } ] } }}",
+        "options": {}
+      },
+      "id": "c9dd8b4d-d290-4e11-834f-5094d8baa1a3",
+      "name": "بدء توليد فيديو الأفاتار (HeyGen)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1504,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 120
+      },
+      "id": "339c8b04-ba18-4f21-8f0b-fc7763d8f342",
+      "name": "انتظار اكتمال فيديو الأفاتار (HeyGen)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1744,
+        384
+      ],
+      "webhookId": "f52b5950-a073-4d92-a045-50b3df39a012"
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://api.heygen.com/v1/video_status.get?video_id=\" + $(\"بدء توليد فيديو الأفاتار (HeyGen)\").first().json.data.video_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "deb2e154-2aec-44a5-9955-1e0183be43d1",
+      "name": "التحقق من حالة فيديو الأفاتار (HeyGen)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1920,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data.video_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "eab70b66-1cdd-4c5b-bbd8-a974810af301",
+      "name": "تحميل ملف فيديو الأفاتار (HeyGen)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2144,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ قبل التشغيل\n1) أنشئ Data Table اسمها **property_profile** بالأعمدة: project_name, location, building_type, dimensions, total_floors, current_floor, facade_desc, reference_image_url, colors, marketing_details, tone, restrictions — وعبّيها بصف واحد لمشروعك.\n2) أنشئ Data Table اسمها **post_log** بالأعمدة: content_id, content_type, stage, status, telegram_message_id, createdAt.\n3) جهّز Credentials: Google Gemini API (للـ AI Agent)، Gemini API Key (Query Auth لـ Imagen/Veo)، HeyGen API Key (Header Auth)، Telegram Bot.\n4) عبّي Placeholders (روابط الـ API الدقيقة + Telegram Chat ID) داخل الـ Nodes الملوّنة.\n5) فعّل Workflow رقم 2 (الاستماع لتيليجرام) قبل تفعيل هذا الـ Workflow.",
+        "height": 200,
+        "width": 300,
+        "color": 4
+      },
+      "id": "460b6544-b718-41e0-ae5f-9e11696459c3",
+      "name": "Sticky Note 9a25a111",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "كل يوم الساعة 9 صباحاً": {
+      "main": [
+        [
+          {
+            "node": "قراءة ملف هوية العقار",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "قراءة ملف هوية العقار": {
+      "main": [
+        [
+          {
+            "node": "قراءة آخر 10 منشورات (لتجنب التكرار)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "قراءة آخر 10 منشورات (لتجنب التكرار)": {
+      "main": [
+        [
+          {
+            "node": "وكيل تخطيط المحتوى اليومي",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "وكيل تخطيط المحتوى اليومي": {
+      "main": [
+        [
+          {
+            "node": "تجهيز بيانات الخطة",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "وكيل تخطيط المحتوى اليومي",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "تنسيق مخرجات الخطة (JSON)": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "وكيل تخطيط المحتوى اليومي",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "تجهيز بيانات الخطة": {
+      "main": [
+        [
+          {
+            "node": "توجيه حسب نوع المحتوى",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "توجيه حسب نوع المحتوى": {
+      "main": [
+        [
+          {
+            "node": "توليد صورة (Imagen API)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        []
+      ]
+    },
+    "توليد صورة (Imagen API)": {
+      "main": [
+        [
+          {
+            "node": "إرسال الصورة لتيليجرام مع أزرار الموافقة",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "إرسال الصورة لتيليجرام مع أزرار الموافقة": {
+      "main": [
+        [
+          {
+            "node": "تسجيل الحالة (بانتظار المراجعة)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "بدء توليد فيديو (Veo Image-to-Video)": {
+      "main": [
+        [
+          {
+            "node": "انتظار اكتمال توليد الفيديو (Veo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "انتظار اكتمال توليد الفيديو (Veo)": {
+      "main": [
+        [
+          {
+            "node": "التحقق من حالة الفيديو والحصول على الرابط (Veo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "التحقق من حالة الفيديو والحصول على الرابط (Veo)": {
+      "main": [
+        [
+          {
+            "node": "تحميل ملف الفيديو (Veo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "تحميل ملف الفيديو (Veo)": {
+      "main": [
+        [
+          {
+            "node": "إرسال الفيديو لتيليجرام مع أزرار الموافقة",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "إرسال الفيديو لتيليجرام مع أزرار الموافقة": {
+      "main": [
+        [
+          {
+            "node": "تسجيل الحالة (بانتظار المراجعة)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "بدء توليد فيديو الأفاتار (HeyGen)": {
+      "main": [
+        [
+          {
+            "node": "انتظار اكتمال فيديو الأفاتار (HeyGen)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "انتظار اكتمال فيديو الأفاتار (HeyGen)": {
+      "main": [
+        [
+          {
+            "node": "التحقق من حالة فيديو الأفاتار (HeyGen)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "التحقق من حالة فيديو الأفاتار (HeyGen)": {
+      "main": [
+        [
+          {
+            "node": "تحميل ملف فيديو الأفاتار (HeyGen)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "تحميل ملف فيديو الأفاتار (HeyGen)": {
+      "main": [
+        [
+          {
+            "node": "إرسال الفيديو لتيليجرام مع أزرار الموافقة",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "4949d302-7e8c-4e33-a8a5-0a848604d9ec",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "f5ab59725d9f11b518b7f96f1dc0e711e1468ac54b6f645955ee9d469ab4d1f2"
+  },
+  "id": "aqGjjAo5V7lC8AL6",
+  "tags": []
+}
